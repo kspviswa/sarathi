@@ -730,6 +730,14 @@ Model context length: {self.context_length:,}
 
         for m in messages[skip:]:
             entry = {k: v for k, v in m.items() if k != "reasoning_content"}
+            # Skip empty assistant responses - they shouldn't be saved to history
+            if entry.get("role") == "assistant":
+                content = entry.get("content", "")
+                if (
+                    not content
+                    or content == "I've completed processing but have no response to give."
+                ):
+                    continue
             if entry.get("role") == "tool" and isinstance(entry.get("content"), str):
                 content = entry["content"]
                 if len(content) > self._TOOL_RESULT_MAX_CHARS:
