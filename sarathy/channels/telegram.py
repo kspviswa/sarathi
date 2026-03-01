@@ -113,7 +113,10 @@ class TelegramChannel(BaseChannel):
     DEFAULT_COMMANDS = [
         BotCommand("start", "Start the bot"),
         BotCommand("new", "Start a new conversation"),
+        BotCommand("clear", "Clear session without saving"),
         BotCommand("stop", "Stop the current task"),
+        BotCommand("think", "Set thinking level (off/low/medium/high)"),
+        BotCommand("context", "Show context usage"),
         BotCommand("verbose", "Toggle token speed display"),
         BotCommand("help", "Show available commands"),
     ]
@@ -423,7 +426,12 @@ class TelegramChannel(BaseChannel):
         await update.message.reply_text(
             "🪆 sarathy commands:\n"
             "/new — Start a new conversation\n"
+            "/clear — Clear session without saving\n"
             "/stop — Stop the current task\n"
+            "/think [level] — Set thinking level\n"
+            "/context — Show context usage\n"
+            "/remember <text> — Save to memory\n"
+            "/verbose [true|false] — Show token speed\n"
             "/help — Show available commands"
         )
 
