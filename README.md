@@ -300,12 +300,20 @@ Key configuration sections in `~/.sarathy/config.json`:
       "smtp_host": "smtp.example.com"
     }
   },
+  "gateway": {
+    "heartbeat": {
+      "enabled": true,
+      "interval_s": 1800,
+      "unique_sessions": true
+    }
+  },
   "tools": {
     "exec": {
       "enabled": true
     },
     "web": {
       "search": {
+        "provider": "brave",
         "api_key": "YOUR_BRAVE_API_KEY"
       }
     },
