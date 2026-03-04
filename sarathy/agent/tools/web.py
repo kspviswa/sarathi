@@ -45,7 +45,7 @@ def _validate_url(url: str) -> tuple[bool, str]:
 
 class WebSearchTool(Tool):
     """Search the web using Brave Search API."""
-    
+
     name = "web_search"
     description = "Search the web. Returns titles, URLs, and snippets."
     parameters = {
@@ -56,45 +56,99 @@ class WebSearchTool(Tool):
         },
         "required": ["query"]
     }
-    
-    def __init__(self, api_key: str | None = None, max_results: int = 5):
+
+    def __init__(self, api_key: str | None = None, max_results: int = 5, provider: str = "brave"):
         self._init_api_key = api_key
         self.max_results = max_results
+        self.provider = provider
 
     @property
     def api_key(self) -> str:
         """Resolve API key at call time so env/config changes are picked up."""
+        if self.provider == "firecrawl":
+            return self._init_api_key or os.environ.get("FIRECRAWL_API_KEY", "")
         return self._init_api_key or os.environ.get("BRAVE_API_KEY", "")
 
     async def execute(self, query: str, count: int | None = None, **kwargs: Any) -> str:
+        if self.provider == "firecrawl":
+            return await self._execute_firecrawl(query, count)
+        return await self._execute_brave(query, count)
+
+    async def _execute_brave(self, query: str, count: int | None = None) -> str:
+        """Execute Brave Search."""
         if not self.api_key:
             return (
                 "Error: Brave Search API key not configured. "
                 "Set it in ~/.sarathy/config.json under tools.web.search.apiKey "
                 "(or export BRAVE_API_KEY), then restart the gateway."
             )
-        
+
         try:
             n = min(max(count or self.max_results, 1), 10)
             async with httpx.AsyncClient() as client:
                 r = await client.get(
                     "https://api.search.brave.com/res/v1/web/search",
                     params={"q": query, "count": n},
-                    headers={"Accept": "application/json", "X-Subscription-Token": api_key},
+                    headers={"Accept": "application/json", "X-Subscription-Token": self.api_key},
                     timeout=10.0
                 )
                 r.raise_for_status()
-            
+
             results = r.json().get("web", {}).get("results", [])
             if not results:
                 return f"No results for: {query}"
-            
+
             lines = [f"Results for: {query}\n"]
             for i, item in enumerate(results[:n], 1):
                 lines.append(f"{i}. {item.get('title', '')}\n   {item.get('url', '')}")
                 if desc := item.get("description"):
                     lines.append(f"   {desc}")
             return "\n".join(lines)
+        except Exception as e:
+            return f"Error: {e}"
+
+    async def _execute_firecrawl(self, query: str, count: int | None = None) -> str:
+        """Execute Firecrawl Search."""
+        if not self.api_key:
+            return (
+                "Error: Firecrawl API key not configured. "
+                "Set it in ~/.sarathy/config.json under tools.web.search.apiKey "
+                "(or export FIRECRAWL_API_KEY), then restart the gateway."
+            )
+
+        try:
+            n = min(max(count or self.max_results, 1), 10)
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    "https://api.firecrawl.dev/v1/search",
+                    json={"query": query, "limit": n, "lang": "en", "country": "US"},
+                    headers={
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}",
+                    },
+                    timeout=15.0,
+                )
+                r.raise_for_status()
+
+            data = r.json()
+            results = data.get("data", [])
+            if not results:
+                return f"No results for: {query}"
+
+            lines = [f"Results for: {query}\n"]
+            for i, item in enumerate(results[:n], 1):
+                title = item.get("title", "")
+                url = item.get("url", "")
+                desc = item.get("description", "")
+                lines.append(f"{i}. {title}\n   {url}")
+                if desc:
+                    lines.append(f"   {desc}")
+            return "\n".join(lines)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                return "Error: Invalid Firecrawl API key. Please check your configuration."
+            return f"Error: HTTP {e.response.status_code}: {e}"
         except Exception as e:
             return f"Error: {e}"
 
