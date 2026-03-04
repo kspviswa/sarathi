@@ -1,6 +1,7 @@
 """Entry point for running the gateway directly (not via CLI)."""
 
 import asyncio
+from datetime import datetime
 
 from sarathy.config.loader import load_config, get_data_dir
 from sarathy.bus.queue import MessageBus
@@ -79,6 +80,7 @@ async def run_gateway(port: int = 18790, verbose: bool = False):
         max_iterations=config.agents.defaults.max_tool_iterations,
         memory_window=config.agents.defaults.memory_window,
         brave_api_key=config.tools.web.search.api_key or None,
+        web_search_provider=config.tools.web.search.provider or "brave",
         exec_config=config.tools.exec,
         cron_service=cron,
         restrict_to_workspace=config.tools.restrict_to_workspace,
@@ -163,9 +165,15 @@ async def run_gateway(port: int = 18790, verbose: bool = False):
         async def _silent(*_args, **_kwargs):
             pass
 
+        # Generate unique session key for this heartbeat run if enabled
+        if hb_cfg.unique_sessions:
+            session_key = f"heartbeat_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        else:
+            session_key = "heartbeat"
+
         return await agent.process_direct(
             tasks,
-            session_key="heartbeat",
+            session_key=session_key,
             channel=channel,
             chat_id=chat_id,
             on_progress=_silent,

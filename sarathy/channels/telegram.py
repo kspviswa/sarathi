@@ -526,6 +526,10 @@ class TelegramChannel(BaseChannel):
         if not update.message or not update.effective_user:
             return
 
+        # Defensive check for None text
+        if not update.message.text:
+            return
+
         command = update.message.text.strip().lower()
 
         # Skip /start, /help, /streaming - they have local handlers

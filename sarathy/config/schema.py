@@ -127,6 +127,7 @@ class HeartbeatConfig(Base):
 
     enabled: bool = True
     interval_s: int = 30 * 60  # 30 minutes
+    unique_sessions: bool = True  # Use separate session file per heartbeat run
 
 
 class GatewayConfig(Base):
@@ -140,7 +141,8 @@ class GatewayConfig(Base):
 class WebSearchConfig(Base):
     """Web search tool configuration."""
 
-    api_key: str = ""  # Brave Search API key
+    provider: str = "brave"  # "brave" or "firecrawl"
+    api_key: str = ""  # API key (used for whichever provider is selected)
     max_results: int = 5
 
 
